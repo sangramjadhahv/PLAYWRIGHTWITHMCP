@@ -1,41 +1,29 @@
 const { test, expect } = require('@playwright/test');
+const { LoginPage, ShopPage, CheckoutPage } = require('./pages/checkoutPage');
 
 test('Checkout', async ({ page }) => {
-  // Navigate to login page
-  await page.goto('https://rahulshettyacademy.com/loginpagePractise/');
+  const loginPage = new LoginPage(page);
+  const shopPage = new ShopPage(page);
+  const checkoutPage = new CheckoutPage(page);
 
-  // Sign in
-  await page.fill('#username', 'rahulshettyacademy');
-  await page.fill("input[type='password']", 'learning');
-  await page.click('#signInBtn');
+  // Navigate to login page and sign in
+  await loginPage.goto();
+  await loginPage.login('rahulshettyacademy', 'learning');
 
   // Verify successful signin (wait for shop page)
   await expect(page).toHaveURL(/.*shop/);
 
-  // Add Blackberry item to cart
-  const cards = await page.$$('.card.h-100');
-  for (const card of cards) {
-    const title = await card.$eval('h4 a', el => el.textContent);
-    if (title.includes('Blackberry')) {
-      await card.click('text=Add');
-      break;
-    }
-  }
+  // Add Blackberry item to cart and go to checkout
+  await shopPage.addProductToCart('Blackberry');
+  await shopPage.goToCart();
+  await shopPage.checkout();
 
-  // Go to checkout
-  await page.click('a.nav-link.btn.btn-primary'); // Cart button
-  await page.click('button.btn.btn-success'); // Checkout button
+  // Enter delivery location and agree to terms
+  await checkoutPage.enterCountry('Pune');
+  await checkoutPage.agreeToTerms();
 
-  // Enter delivery location
-  await page.fill('#country', 'Pune');
-  await page.waitForSelector('.suggestions');
-  await page.click('.suggestions ul li >> text=Pune');
-
-  // Agree to terms and purchase
-  await page.check("label[for='checkbox2']");
-  await page.click('input[type="submit"]');
-
-  // Assert success message
-  const successText = await page.locator('.alert-success').textContent();
+  // Purchase and assert success message
+  await checkoutPage.purchase();
+  const successText = await checkoutPage.getSuccessText();
   expect(successText).toContain('Success');
 });
